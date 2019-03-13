@@ -1,14 +1,16 @@
 package mailSender
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"html/template"
+	"log"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
-	"github.com/mylockerteam/alog"
 	"gopkg.in/gomail.v2"
 )
 
@@ -40,12 +42,12 @@ func ParseEss(ess string) (host string, port int, username string, password stri
 	str := strings.Split(ess, ";")
 	if len(str) < 3 {
 		err := errors.New("minimum match not found")
-		getLogger().Error(err)
+		log.Println(err)
 		return "", 0, "", ""
 	}
 	host, portStr, err := net.SplitHostPort(str[0])
 	if err != nil {
-		getLogger().Error(err)
+		log.Println(err)
 		return "", 0, "", ""
 	}
 	port, _ = strconv.Atoi(portStr)
@@ -75,8 +77,8 @@ func (s *Sender) asyncSender() {
 	for msg := range s.Channel {
 		message := prepareMsg(msg)
 		if err := gomail.Send(s.Closer, message); err != nil {
-			_, err := message.WriteTo(getLogger().GetLoggerInterfaceByType(alog.LoggerInfo))
-			getLogger().Error(err)
+			_, err := message.WriteTo(bufio.NewWriter(os.Stdout))
+			log.Println(err)
 		}
 	}
 }
@@ -84,7 +86,7 @@ func (s *Sender) asyncSender() {
 func prepareMsg(msg Message) *gomail.Message {
 	buffer := new(bytes.Buffer)
 	if err := msg.Template.Execute(buffer, msg.Data); err != nil {
-		getLogger().Error(err)
+		log.Println(err)
 	}
 	msg.Message.SetBody("text/html", buffer.String())
 	return msg.Message
