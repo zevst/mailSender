@@ -37,7 +37,7 @@ func Test_getCloser(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	type args struct {
-		d dealer
+		d GomailDealer
 	}
 	tests := []struct {
 		name string
