@@ -14,8 +14,12 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-type dealer interface {
+type GomailDealer interface {
 	Dial() (gomail.SendCloser, error)
+}
+
+type GomailSender interface {
+	Send(s gomail.Sender, msg ...*gomail.Message) error
 }
 
 type AsyncSender interface {
@@ -31,9 +35,10 @@ type Message struct {
 }
 
 type Sender struct {
-	AsyncSender
 	Channel chan Message
 	Closer  gomail.SendCloser
+	AsyncSender
+	GomailSender
 }
 
 var tryConnCnt uint = 0
@@ -61,7 +66,7 @@ func Create(s *Sender) AsyncSender {
 	return s
 }
 
-func GetCloser(d dealer) gomail.SendCloser {
+func GetCloser(d GomailDealer) gomail.SendCloser {
 	closer, err := d.Dial()
 	if err == nil {
 		return closer
@@ -73,10 +78,14 @@ func GetCloser(d dealer) gomail.SendCloser {
 	return nil
 }
 
+func (s *Sender) Send(gSender gomail.Sender, msg ...*gomail.Message) error {
+	return gomail.Send(gSender, msg...)
+}
+
 func (s *Sender) asyncSender() {
 	for msg := range s.Channel {
 		message := prepareMsg(msg)
-		if err := gomail.Send(s.Closer, message); err != nil {
+		if err := s.Send(s.Closer, message); err != nil {
 			_, err := message.WriteTo(bufio.NewWriter(os.Stdout))
 			log.Println(err)
 		}
